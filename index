@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抽奖大屏系统</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Font Awesome 图标 -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 自定义配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF4D4F',    // 主色调：红色
+            secondary: '#1890FF',  // 辅助色：蓝色
+            accent: '#FAAD14',     // 强调色：金色
+            dark: '#141414',       // 深色背景
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      .text-shadow-lg {
+        text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      }
+      .animate-roll {
+        animation: roll 0.1s infinite;
+      }
+      .animate-bounce-win {
+        animation: bounce 0.5s infinite alternate;
+      }
+    }
+    
+    @keyframes roll {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-10px); }
+    }
+    
+    @keyframes bounce {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+  </style>
+</head>
+
+<body class="bg-gradient-to-br from-dark to-gray-800 min-h-screen text-white">
+  <!-- 页面标题 -->
+  <header class="py-6 text-center">
+    <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-accent text-shadow-lg">
+      <i class="fa fa-trophy mr-3"></i>幸运抽奖大屏
+    </h1>
+    <p class="mt-2 text-gray-300">签到参与抽奖，共抽取6名幸运用户</p>
+  </header>
+
+  <main class="container mx-auto px-4 max-w-6xl">
+    <!-- 1. 签到区域 -->
+    <section class="bg-gray-800/50 rounded-xl p-6 mb-8 backdrop-blur-sm border border-gray-700/50">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-user-plus text-secondary mr-2"></i>用户签到
+      </h2>
+      <div class="grid md:grid-cols-2 gap-4 items-end">
+        <div>
+          <label for="name" class="block text-gray-300 mb-1">姓名</label>
+          <input 
+            type="text" 
+            id="name" 
+            placeholder="请输入您的姓名" 
+            class="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 transition"
+          >
+        </div>
+        <div>
+          <label for="phone" class="block text-gray-300 mb-1">手机号码</label>
+          <input 
+            type="tel" 
+            id="phone" 
+            placeholder="请输入11位手机号码" 
+            class="w-full px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 transition"
+          >
+        </div>
+        <div class="md:col-span-2 text-center">
+          <button 
+            onclick="signIn()" 
+            class="px-8 py-3 bg-secondary hover:bg-secondary/90 text-white rounded-lg font-medium transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-secondary/50"
+          >
+            <i class="fa fa-check-circle mr-2"></i>提交签到
+          </button>
+          <p id="signInfo" class="mt-2 text-gray-400 text-sm hidden"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 抽奖大屏区域 -->
+    <section class="bg-gradient-to-r from-primary/80 to-secondary/80 rounded-xl p-6 mb-8 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[url('https://picsum.photos/id/1042/1200/600')] opacity-10 bg-cover bg-center"></div>
+      <div class="relative z-10">
+        <h2 class="text-xl font-semibold mb-6 flex items-center">
+          <i class="fa fa-random text-accent mr-2"></i>抽奖区域
+          <span class="ml-2 text-sm bg-accent/20 text-accent px-2 py-1 rounded-full">剩余 <span id="remainCount">6</span> 次</span>
+        </h2>
+        
+        <!-- 滚动显示区域 -->
+        <div class="bg-dark/60 backdrop-blur-sm rounded-lg p-6 h-40 flex items-center justify-center mb-6 border border-white/10">
+          <div id="rollingArea" class="text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-center text-shadow">
+            等待签到用户...
+          </div>
+        </div>
+        
+        <!-- 抽奖按钮 -->
+        <div class="text-center">
+          <button 
+            id="lotteryBtn" 
+            onclick="toggleLottery()" 
+            class="px-10 py-4 bg-accent hover:bg-accent/90 text-dark rounded-lg font-bold text-lg transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            disabled
+          >
+            <i class="fa fa-play mr-2"></i>开始抽奖
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 中奖名单区域 -->
+    <section class="bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fa fa-list-alt text-accent mr-2"></i>中奖名单
+      </h2>
+      <div id="winnerList" class="grid gap-3">
+        <div class="text-center text-gray-400 py-10 border border-dashed border-gray-600 rounded-lg">
+          暂无中奖记录
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 重置按钮（仅用于测试） -->
+    <div class="text-center mt-8 mb-12">
+      <button 
+        onclick="resetSystem()" 
+        class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-500/50"
+      >
+        <i class="fa fa-refresh mr-1"></i>重置所有数据
+      </button>
+    </div>
+  </main>
+
+  <footer class="text-center text-gray-500 text-sm py-4">
+    <p>© 2024 抽奖大屏系统 | 部署于 GitHub Pages</p>
+  </footer>
+
+  <script>
+    // 全局状态管理
+    let userList = JSON.parse(localStorage.getItem('lotteryUsers')) || [];
+    let winnerList = JSON.parse(localStorage.getItem('lotteryWinners')) || [];
+    let remainLotteryCount = 6 - winnerList.length; // 剩余抽奖次数
+    let isRolling = false; // 滚动状态标记
+    let rollInterval = null; // 滚动定时器
+
+    // DOM 元素
+    const nameInput = document.getElementById('name');
+    const phoneInput = document.getElementById('phone');
+    const signInfo = document.getElementById('signInfo');
+    const rollingArea = document.getElementById('rollingArea');
+    const lotteryBtn = document.getElementById('lotteryBtn');
+    const remainCountEl = document.getElementById('remainCount');
+    const winnerListEl = document.getElementById('winnerList');
+
+    // 页面初始化
+    window.onload = () => {
+      updateRemainCount();
+      updateLotteryBtnStatus();
+      renderWinnerList();
+    };
+
+    // 1. 签到功能
+    function signIn() {
+      const name = nameInput.value.trim();
+      const phone = phoneInput.value.trim();
+
+      // 校验姓名
+      if (!name) {
+        showSignInfo('请输入姓名', 'error');
+        return;
+      }
+
+      // 校验手机号（11位数字）
+      const phoneReg = /^1[3-9]\d{9}$/;
+      if (!phoneReg.test(phone)) {
+        showSignInfo('请输入有效的11位手机号码', 'error');
+        return;
+      }
+
+      // 检查重复签到
+      if (userList.some(user => user.phone === phone)) {
+        showSignInfo('该手机号已签到，无需重复提交', 'warning');
+        return;
+      }
+
+      // 新增用户
+      const newUser = {
+        name,
+        phone,
+        signTime: new Date().toLocaleString()
+      };
+      userList.push(newUser);
+      localStorage.setItem('lotteryUsers', JSON.stringify(userList));
+
+      // 反馈与重置
+      showSignInfo(`签到成功！欢迎 ${name} 参与抽奖`, 'success');
+      nameInput.value = '';
+      phoneInput.value = '';
+      updateLotteryBtnStatus();
+    }
+
+    // 显示签到信息提示
+    function showSignInfo(message, type) {
+      signInfo.textContent = message;
+      signInfo.classList.remove('hidden', 'text-red-400', 'text-green-400', 'text-yellow-400');
+      
+      if (type === 'error') signInfo.classList.add('text-red-400');
+      else if (type === 'success') signInfo.classList.add('text-green-400');
+      else if (type === 'warning') signInfo.classList.add('text-yellow-400');
+      
+      // 3秒后隐藏
+      setTimeout(() => signInfo.classList.add('hidden'), 3000);
+    }
+
+    // 2. 抽奖功能
+    function toggleLottery() {
+      if (isRolling) {
+        // 停止滚动并抽奖
+        stopRolling();
+      } else {
+        // 开始滚动
+        startRolling();
+      }
+    }
+
+    // 开始滚动动画
+    function startRolling() {
+      if (userList.length === 0) return;
+      
+      isRolling = true;
+      lotteryBtn.innerHTML = '<i class="fa fa-stop mr-2"></i>停止抽奖';
+      lotteryBtn.classList.remove('bg-accent', 'hover:bg-accent/90');
+      lotteryBtn.classList.add('bg-primary', 'hover:bg-primary/90');
+
+      // 滚动逻辑：随机显示用户
+      rollInterval = setInterval(() => {
+        const randomUser = userList[Math.floor(Math.random() * userList.length)];
+        rollingArea.innerHTML = `
+          <div class="animate-roll">
+            ${randomUser.name} <span class="text-gray-300 text-sm">(${maskPhone(randomUser.phone)})</span>
+          </div>
+        `;
+      }, 80); // 滚动速度
+    }
+
+    // 停止滚动并抽取中奖者
+    function stopRolling() {
+      clearInterval(rollInterval);
+      isRolling = false;
+      
+      // 恢复按钮状态
+      lotteryBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始抽奖';
+      lotteryBtn.classList.remove('bg-primary', 'hover:bg-primary/90');
+      lotteryBtn.classList.add('bg-accent', 'hover:bg-accent/90');
+
+      // 过滤已中奖用户
+      const availableUsers = userList.filter(user => 
+        !winnerList.some(winner => winner.phone === user.phone)
+      );
+      
+      if (availableUsers.length === 0) {
+        rollingArea.innerHTML = '所有用户已中奖！';
+        return;
+      }
+
+      // 随机抽取1名中奖者
+      const winner = availableUsers[Math.floor(Math.random() * availableUsers.length)];
+      winner.lotteryNo = winnerList.length + 1; // 中奖序号
+      winner.lotteryTime = new Date().toLocaleString();
+      winnerList.push(winner);
+
+      // 保存数据
+      localStorage.setItem('lotteryWinners', JSON.stringify(winnerList));
+      remainLotteryCount--;
+      
+      // 更新UI
+      updateRemainCount();
+      updateLotteryBtnStatus();
+      renderWinnerList();
+      
+      // 显示中奖结果
+      rollingArea.innerHTML = `
+        <div class="animate-bounce-win text-accent">
+          恭喜！<br>
+          ${winner.name} <span class="text-gray-300 text-sm">(${maskPhone(winner.phone)})</span>
+        </div>
+      `;
+    }
+
+    // 3. 中奖名单渲染
+    function renderWinnerList() {
+      if (winnerList.length === 0) {
+        winnerListEl.innerHTML = `
+          <div class="text-center text-gray-400 py-10 border border-dashed border-gray-600 rounded-lg">
+            暂无中奖记录
+          </div>
+        `;
+        return;
+      }
+
+      // 按中奖顺序渲染（最新的在最前）
+      winnerListEl.innerHTML = winnerList
+        .slice()
+        .reverse()
+        .map(winner => `
+          <div class="bg-gray-700/30 rounded-lg p-4 flex flex-wrap items-center justify-between border ${winner.lotteryNo === winnerList.length ? 'border-accent/50' : 'border-gray-600/50'}">
+            <div class="flex items-center">
+              <span class="flex items-center justify-center w-8 h-8 bg-accent text-dark rounded-full font-bold mr-3">
+                ${winner.lotteryNo}
+              </span>
+              <div>
+                <div class="font-medium">${winner.name}</div>
+                <div class="text-gray-400 text-sm">${maskPhone(winner.phone)}</div>
+              </div>
+            </div>
+            <div class="text-gray-400 text-sm mt-2 sm:mt-0">
+              ${winner.lotteryTime}
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+
+    // 辅助函数：更新剩余次数
+    function updateRemainCount() {
+      remainCountEl.textContent = remainLotteryCount;
+    }
+
+    // 辅助函数：更新抽奖按钮状态
+    function updateLotteryBtnStatus() {
+      if (userList.length === 0 || remainLotteryCount === 0) {
+        lotteryBtn.disabled = true;
+        if (remainLotteryCount === 0) {
+          lotteryBtn.innerHTML = '<i class="fa fa-trophy mr-2"></i>抽奖已结束';
+        } else {
+          lotteryBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始抽奖';
+        }
+      } else {
+        lotteryBtn.disabled = false;
+      }
+    }
+
+    // 辅助函数：手机号脱敏（中间4位用*代替）
+    function maskPhone(phone) {
+      return phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1****$3');
+    }
+
+    // 重置系统（清空所有数据）
+    function resetSystem() {
+      if (confirm('确定要重置所有数据吗？签到记录和中奖记录将全部清空！')) {
+        localStorage.removeItem('lotteryUsers');
+        localStorage.removeItem('lotteryWinners');
+        userList = [];
+        winnerList = [];
+        remainLotteryCount = 6;
+        
+        // 更新UI
+        updateRemainCount();
+        updateLotteryBtnStatus();
+        renderWinnerList();
+        rollingArea.innerHTML = '等待签到用户...';
+        alert('数据已重置成功！');
+      }
+    }
+  </script>
+</body>
+</html>
